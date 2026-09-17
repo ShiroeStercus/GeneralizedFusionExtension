@@ -122,24 +122,6 @@ def _state_measure_for_XX_states(state, order):
     else:
         return min(1, np.sum(np.array([M_plus, M_minus]) ** order))
 
-def _state_measure_for_XA_rotated_ZA_and_ZB_states(state, order):
-
-    a = np.sum(OO * state)
-    b = np.sum(IO * state)
-    c = np.sum(II * state)
-    d = np.sum(OI * state)
-
-    return (np.abs(a**2-b**2)**2)**order + (np.abs(c**2-d**2)**2)**order
-
-def _state_measure_for_XB_rotated_ZA_and_ZB_states(state, order):
-
-    a = np.sum(OO * state)
-    b = np.sum(IO * state)
-    c = np.sum(II * state)
-    d = np.sum(OI * state)
-
-    return (np.abs(a ** 2 - d ** 2) ** 2) ** order + (np.abs(b ** 2 - c ** 2) ** 2) ** order
-
 def _state_measure_for_ZZ_states(state, order):
     s = np.abs(state)
 
@@ -190,7 +172,8 @@ def _rotZZ_ness(state, order):
 
     return np.max([_state_measure_for_ZZ_states(state1,order),_state_measure_for_ZZ_states(state2,order)])
 
-def _maximal_overlapping_with_XA_rotated_ZZ_state(state, tolerance = 10 ** -6):
+def _maximal_fidelity_with_XA_rotated_ZZ_state2(state, tolerance = 10 ** -6):
+
     possible_maximal_overlapping = []
 
     a, b, c, d = state[0], state[1], state[2], state[3]
@@ -309,8 +292,30 @@ def _maximal_overlapping_with_XA_rotated_ZZ_state(state, tolerance = 10 ** -6):
     
     else:
         return min(np.max(possible_maximal_overlapping),1)
+    
+def _maximal_fidelity_with_XA_rotated_ZZ_state(state):
 
-def _maximal_overlapping_with_XB_rotated_ZZ_state(state, tolerance = 10 ** -6):
+    a, d, c, b = state[0], state[1], state[2], state[3]
+
+    cosphihalf2 = np.abs(a)**2 + np.abs(b)**2
+    sinphihalf2 = np.abs(c)**2 + np.abs(d)**2
+
+    fmax = (1 + np.sqrt( (cosphihalf2 - sinphihalf2)**2 + 4*np.imag((np.conjugate(a)*c + np.conjugate(b)*d))**2))/2
+
+    return min(fmax,1)
+
+def _maximal_fidelity_with_XB_rotated_ZZ_state(state):
+
+    a, d, c, b = state[0], state[2], state[1], state[3]
+
+    cosphihalf2 = np.abs(a)**2 + np.abs(b)**2
+    sinphihalf2 = np.abs(c)**2 + np.abs(d)**2
+
+    fmax = (1 + np.sqrt( (cosphihalf2 - sinphihalf2)**2 + 4*np.imag((np.conjugate(a)*c + np.conjugate(b)*d))**2))/2
+
+    return min(fmax,1)
+
+def _maximal_fidelity_with_XB_rotated_ZZ_state2(state, tolerance = 10 ** -6):
     possible_maximal_overlapping = []
 
     a, c, b, d = state[0], state[1], state[2], state[3]
@@ -430,7 +435,7 @@ def _maximal_overlapping_with_XB_rotated_ZZ_state(state, tolerance = 10 ** -6):
     else:
         return min(np.max(possible_maximal_overlapping),1)
 
-def _maximal_overlapping_with_XA_rotated_XB_rotated_ZZ_state(state, tolerance = 10 ** -6):
+def _maximal_fidelity_with_XA_rotated_XB_rotated_ZZ_state2(state, tolerance = 10 ** -6):
 
     plus_plus = np.array([1, 1, 1, 1], dtype=complex) / 2
     minus_minus = np.array([1, -1, -1, 1], dtype=complex) / 2
@@ -460,6 +465,14 @@ def _maximal_overlapping_with_XA_rotated_XB_rotated_ZZ_state(state, tolerance = 
 
     return max(ress)
 
+def _maximal_fidelity_with_XA_rotated_XB_rotated_ZZ_state(state):
+
+    a, d, c, b = state[0], state[1], state[2], state[3]
+    
+    fmax = 1/2 + (np.abs((a+b)**2 - (c+d)**2) + np.abs((a-b)**2 - (c-d)**2 ))/4
+
+    return min(fmax,1)
+
 def state_measure_type_to_state_measure(state_measure_type):
  
     if state_measure_type == 0:
@@ -467,15 +480,15 @@ def state_measure_type_to_state_measure(state_measure_type):
 
     elif state_measure_type == 1:
         return _state_measure_for_XX_states
-
+    
     elif state_measure_type == 2:
-        return _state_measure_for_XA_rotated_ZA_and_ZB_states
+        return lambda x,y: _maximal_fidelity_with_XA_rotated_XB_rotated_ZZ_state(x)**y
 
     elif state_measure_type == 3:
-        return _state_measure_for_XB_rotated_ZA_and_ZB_states
-
+        return lambda x,y: _maximal_fidelity_with_XA_rotated_ZZ_state(x)**y
+    
     elif state_measure_type == 4:
-        return _rotZZ_ness
+        return lambda x,y: _maximal_fidelity_with_XB_rotated_ZZ_state(x)**y
 
     elif state_measure_type == 5:
         return _state_measure_for_XA_rotated_ZB_rotated_Bell_states
@@ -487,7 +500,22 @@ def state_measure_type_to_state_measure(state_measure_type):
         return lambda x,y: _entanglement_entropy(x)**y
 
     elif state_measure_type == 8:
+        # state measure for Z-rotated Bell states
         return lambda x,y: _state_measure_for_X_rotated_Bell_states(H12@x,y)
+    
+    elif state_measure_type == 9:
+        return _rotZZ_ness
+
+    elif state_measure_type == 10:
+        # maximal fidality with ZB-rotated XX-states
+        return lambda x,y: _maximal_fidelity_with_XB_rotated_ZZ_state(H12@x)**y
+
+    elif state_measure_type == 100:
+            return lambda x,y: _maximal_fidelity_with_XA_rotated_ZZ_state2(x)**y
+
+    elif state_measure_type == 101:
+            return lambda x,y: _maximal_fidelity_with_XA_rotated_XB_rotated_ZZ_state2(x)**y
+    
 
 # FusionSimulator addon
 
@@ -510,7 +538,7 @@ class MatrixQPCFusion_with_arbitrary_state_measure(MatrixQPCFusion):
         if weight != 0:
             for id in self.measurement_outcome:
                 result += self.measurement_outcome[id][1] * ((1 - weight) * _state_measure_for_X_rotated_Bell_states(self.measurement_outcome[id][0], order)
-                                                                + (weight) * _maximal_overlapping_with_XA_rotated_ZZ_state(self.measurement_outcome[id][0])**(2 * order))
+                                                                + (weight) * _maximal_fidelity_with_XA_rotated_ZZ_state(self.measurement_outcome[id][0])**(2 * order))
                                                                 # + (weight)*_rotZZ_ness(self.measurement_outcome[id][0], 2*order))
         else:
 
